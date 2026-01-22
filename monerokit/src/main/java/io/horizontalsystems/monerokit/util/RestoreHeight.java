@@ -28,7 +28,7 @@ import java.util.concurrent.TimeUnit;
 public class RestoreHeight {
     static final int DIFFICULTY_TARGET = 120; // seconds
 
-    static private volatile RestoreHeight Singleton = null;
+    static private RestoreHeight Singleton = null;
 
     static public RestoreHeight getInstance() {
         if (Singleton == null) {
@@ -41,9 +41,9 @@ public class RestoreHeight {
         return Singleton;
     }
 
-    private final Map<String, Long> blockheight = new HashMap<>();
+    private Map<String, Long> blockheight = new HashMap<>();
 
-     private RestoreHeight() {
+    RestoreHeight() {
         blockheight.put("2014-05-01", 18844L);
         blockheight.put("2014-06-01", 65406L);
         blockheight.put("2014-07-01", 108882L);
@@ -153,8 +153,6 @@ public class RestoreHeight {
         blockheight.put("2023-03-01", 2832118L);
         blockheight.put("2023-04-01", 2854365L);
         blockheight.put("2023-05-01", 2875972L);
-        blockheight.put("2025-09-01", 3490175L);
-        blockheight.put("2025-12-29", 3575753L);
     }
 
     public long getHeight(String date) {
@@ -172,7 +170,7 @@ public class RestoreHeight {
         Calendar cal = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
         cal.set(Calendar.DST_OFFSET, 0);
         cal.setTime(date);
-        cal.add(Calendar.DAY_OF_MONTH, -2); // give it some leeway
+        cal.add(Calendar.DAY_OF_MONTH, -4); // give it some leeway
         if (cal.get(Calendar.YEAR) < 2014)
             return 0;
         if ((cal.get(Calendar.YEAR) == 2014) && (cal.get(Calendar.MONTH) <= 3))

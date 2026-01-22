@@ -21,16 +21,9 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-
 import io.horizontalsystems.monerokit.data.Subaddress;
 import io.horizontalsystems.monerokit.data.TxData;
 import lombok.Getter;
@@ -50,11 +43,6 @@ public class Wallet {
         Status(int status, String errorString) {
             this.status = StatusEnum.values()[status];
             this.errorString = errorString;
-        }
-
-        public Status() {
-            this.status = StatusEnum.Status_Ok;
-            this.errorString = "";
         }
 
         final private StatusEnum status;
@@ -183,15 +171,12 @@ public class Wallet {
     public Subaddress getSubaddressObject(int subAddressIndex) {
         Subaddress subaddress = getSubaddressObject(accountIndex, subAddressIndex);
         long amount = 0;
-        long txsCount = 0;
         for (TransactionInfo info : getHistory().getAll()) {
             if ((info.addressIndex == subAddressIndex) && (info.direction == TransactionInfo.Direction.Direction_In)) {
                 amount += info.amount;
-                txsCount++;
             }
         }
         subaddress.setAmount(amount);
-        subaddress.setTxsCount(txsCount);
         return subaddress;
     }
 
@@ -211,10 +196,6 @@ public class Wallet {
     public native String getSecretViewKey();
 
     public native String getSecretSpendKey();
-
-    public native String getPublicViewKey();
-
-    public native String getPublicSpendKey();
 
     public boolean store() {
         return store("");
@@ -246,39 +227,15 @@ public class Wallet {
     //    virtual void setRecoveringFromSeed(bool recoveringFromSeed) = 0;
 //    virtual bool connectToDaemon() = 0;
 
-    private static final int CONNECTION_TIMEOUT_MS = 15000;
-
     public ConnectionStatus getConnectionStatus() {
-        try (ExecutorService executor = Executors.newSingleThreadExecutor()) {
-            Future<ConnectionStatus> future = executor.submit(() -> {
-                int s = getConnectionStatusJ();
-                return ConnectionStatus.values()[s];
-            });
-
-            try {
-                return future.get(CONNECTION_TIMEOUT_MS, TimeUnit.MILLISECONDS);
-            } catch (TimeoutException e) {
-                Timber.w("Connection status check timed out after %d ms", CONNECTION_TIMEOUT_MS);
-                future.cancel(true);
-                return ConnectionStatus.ConnectionStatus_Disconnected;
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                Timber.w("Connection status check interrupted");
-                return ConnectionStatus.ConnectionStatus_Disconnected;
-            } catch (ExecutionException e) {
-                Timber.e(e.getCause(), "Error checking connection status");
-                return ConnectionStatus.ConnectionStatus_Disconnected;
-            } finally {
-                executor.shutdownNow();
-            }
-        }
+        int s = getConnectionStatusJ();
+        return ConnectionStatus.values()[s];
     }
 
     private native int getConnectionStatusJ();
 
-    public native void setTrustedDaemon(boolean isTrusted);
-
-    public native boolean trustedDaemon();
+//TODO virtual void setTrustedDaemon(bool arg) = 0;
+//TODO virtual bool trustedDaemon() const = 0;
 
     public native boolean setProxy(String address);
 
@@ -332,17 +289,7 @@ public class Wallet {
         return isAddressValid(address, WalletManager.getInstance().getNetworkType().getValue());
     }
 
-    public static String isPrivateViewKeyValid(String secret_key, String address) {
-        return isKeyValid(secret_key, address, true, WalletManager.getInstance().getNetworkType().getValue());
-    }
-
-    public static String isPrivateSpendKeyValid(String secret_key, String address) {
-        return isKeyValid(secret_key, address, false, WalletManager.getInstance().getNetworkType().getValue());
-    }
-
     public static native boolean isAddressValid(String address, int networkType);
-
-    public static native String isKeyValid(String secret_key, String address, Boolean is_view_key, int networkType);
 
     public static native String getPaymentIdFromAddress(String address, int networkType);
 

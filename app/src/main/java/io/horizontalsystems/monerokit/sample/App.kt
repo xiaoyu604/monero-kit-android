@@ -2,7 +2,6 @@ package io.horizontalsystems.monerokit.sample
 
 import android.app.Application
 import io.horizontalsystems.monerokit.MoneroKit
-import io.horizontalsystems.monerokit.Seed
 import io.horizontalsystems.monerokit.data.DefaultNodes
 import timber.log.Timber
 
@@ -32,11 +31,11 @@ class App : Application() {
 
         kit = MoneroKit.getInstance(
             context = this,
-            seed = Seed.Bip39("".split(" "), ""),
-            restoreDateOrHeight = "3435800",
-            walletId = walletId,
-            node = DefaultNodes.BOLDSUCK.uri,
-            trustNode = true
+            words = "".split(" "),
+            passphrase = "",
+            restoreDateOrHeight = "3438000",
+            walletId = "wallet_id_111",
+            node = DefaultNodes.BOLDSUCK.uri
         )
     }
 
@@ -46,7 +45,5 @@ class App : Application() {
             private set
 
         lateinit var kit: MoneroKit
-
-        const val walletId = "wallet_id_111"
     }
 }

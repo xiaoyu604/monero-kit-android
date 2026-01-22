@@ -7,11 +7,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import io.horizontalsystems.monerokit.Balance
-import io.horizontalsystems.monerokit.MoneroKit
 import io.horizontalsystems.monerokit.SyncState
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.math.BigDecimal
 
@@ -22,7 +19,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private var totalBalance: BigDecimal? = null
 
-    private var address: String = ""
+    var address: String = ""
 
     private val decimal = 12
 
@@ -30,7 +27,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         MainUiState(
             syncState = syncState,
             totalBalance = totalBalance,
-            address = address,
         )
     )
         private set
@@ -40,27 +36,27 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             kit.syncStateFlow.collect(::updateSyncState)
         }
         viewModelScope.launch(Dispatchers.Default) {
+            kit.allTransactionsFlow.collect {
+                Log.e("eee", "txs: ${it.joinToString(separator = "\n")}")
+            }
+        }
+        viewModelScope.launch(Dispatchers.Default) {
             kit.balanceFlow.collect {
                 updateBalance(it)
             }
         }
     }
 
-    private fun updateBalance(balance: Balance?) {
+    private fun updateBalance(balance: Long?) {
         totalBalance = balance?.let {
-            scaleDown(it.all.toBigDecimal())
+            scaleDown(it.toBigDecimal())
         } ?: BigDecimal.ZERO
 
         emitState()
     }
 
     private fun updateSyncState(syncState: SyncState) {
-        Log.e("eee", "viewmodel syncState: $syncState")
         this.syncState = syncState
-
-        if (syncState is SyncState.Synced) {
-            address = kit.receiveAddress
-        }
 
         emitState()
     }
@@ -70,9 +66,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     override fun onCleared() {
-        viewModelScope.launch(Dispatchers.Default) {
-            kit.stop()
-        }
+        kit.stop()
     }
 
     private fun emitState() {
@@ -80,46 +74,20 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             uiState = MainUiState(
                 syncState = syncState,
                 totalBalance = totalBalance,
-                address = address,
             )
         }
     }
 
     fun start() {
-        viewModelScope.launch(Dispatchers.Default) {
-            kit.start()
-        }
-
-        viewModelScope.launch(Dispatchers.Default) {
-            address = kit.receiveAddress
-            while (kit.receiveAddress.isEmpty()) {
-                delay(100)
-                address = kit.receiveAddress.ifBlank({ "Loading.." })
-                emitState()
-            }
-        }
+        kit.start()
     }
 
     fun stop() {
-        viewModelScope.launch(Dispatchers.Default) {
-            kit.stop()
-        }
-    }
-
-    fun deleteWallet() {
-        viewModelScope.launch {
-            val result = MoneroKit.deleteWallet(App.instance, App.walletId)
-            Log.e("eee", "deleteWallet: $result")
-        }
-    }
-
-    fun saveState() {
-        kit.saveState()
+        kit.stop()
     }
 }
 
 data class MainUiState(
     val syncState: SyncState,
     val totalBalance: BigDecimal?,
-    val address: String,
 )

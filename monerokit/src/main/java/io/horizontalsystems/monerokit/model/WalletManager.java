@@ -34,6 +34,7 @@ public class WalletManager {
         System.loadLibrary("monerujo");
     }
 
+    // no need to keep a reference to the REAL WalletManager (we get it every tvTime we need it)
     private static WalletManager Instance = null;
 
     public static synchronized WalletManager getInstance() {
@@ -61,9 +62,64 @@ public class WalletManager {
         }
     }
 
+    private Wallet managedWallet = null;
+
+    public Wallet getWallet() {
+        return managedWallet;
+    }
+
+    private void manageWallet(Wallet wallet) {
+        Timber.d("Managing %s", wallet.getName());
+        managedWallet = wallet;
+    }
+
+    private void unmanageWallet(Wallet wallet) {
+        if (wallet == null) {
+            throw new IllegalArgumentException("Cannot unmanage null!");
+        }
+        if (getWallet() == null) {
+            throw new IllegalStateException("No wallet under management!");
+        }
+        if (getWallet() != wallet) {
+            throw new IllegalStateException(wallet.getName() + " not under management!");
+        }
+        Timber.d("Unmanaging %s", managedWallet.getName());
+        managedWallet = null;
+    }
+
+    public Wallet createWallet(File aFile, String password, String language, long height) {
+        long walletHandle = createWalletJ(aFile.getAbsolutePath(), password, language, getNetworkType().getValue());
+        Wallet wallet = new Wallet(walletHandle);
+        manageWallet(wallet);
+        if (wallet.getStatus().isOk() && (wallet.getNetworkType() == NetworkType.NetworkType_Mainnet)) {
+            // (Re-)Estimate restore height based on what we know
+            final long oldHeight = wallet.getRestoreHeight();
+            // Go back 4 days if we don't have a precise restore height
+            Calendar restoreDate = Calendar.getInstance();
+            restoreDate.add(Calendar.DAY_OF_MONTH, -4);
+            final long restoreHeight =
+                    (height > -1) ? height : RestoreHeight.getInstance().getHeight(restoreDate.getTime());
+            wallet.setRestoreHeight(restoreHeight);
+            Timber.d("Changed Restore Height from %d to %d", oldHeight, wallet.getRestoreHeight());
+            wallet.setPassword(password); // this rewrites the keys file (which contains the restore height)
+        } else
+            Timber.e(wallet.getStatus().toString());
+        return wallet;
+    }
+
+    private native long createWalletJ(String path, String password, String language, int networkType);
+
+    public Wallet openAccount(String path, int accountIndex, String password) {
+        long walletHandle = openWalletJ(path, password, getNetworkType().getValue());
+        Wallet wallet = new Wallet(walletHandle, accountIndex);
+        manageWallet(wallet);
+        return wallet;
+    }
+
     public Wallet openWallet(String path, String password) {
         long walletHandle = openWalletJ(path, password, getNetworkType().getValue());
         Wallet wallet = new Wallet(walletHandle);
+        manageWallet(wallet);
         return wallet;
     }
 
@@ -76,6 +132,7 @@ public class WalletManager {
                 mnemonic, offset,
                 getNetworkType().getValue(), restoreHeight);
         Wallet wallet = new Wallet(walletHandle);
+        manageWallet(wallet);
         return wallet;
     }
 
@@ -89,6 +146,7 @@ public class WalletManager {
                 language, getNetworkType().getValue(), restoreHeight,
                 addressString, viewKeyString, spendKeyString);
         Wallet wallet = new Wallet(walletHandle);
+        manageWallet(wallet);
         return wallet;
     }
 
@@ -100,10 +158,36 @@ public class WalletManager {
                                               String viewKeyString,
                                               String spendKeyString);
 
+    public Wallet createWalletFromDevice(File aFile, String password, long restoreHeight,
+                                         Wallet.Device device) {
+        final String lookahead = device.getAccountLookahead() + ":" + device.getSubaddressLookahead();
+        Timber.d("Creating from %s with %s lookahead", device, lookahead);
+        long walletHandle = createWalletFromDeviceJ(aFile.getAbsolutePath(), password,
+                getNetworkType().getValue(), device.name(), restoreHeight,
+                lookahead);
+        Wallet wallet = new Wallet(walletHandle);
+        manageWallet(wallet);
+        return wallet;
+    }
+
+    private native long createWalletFromDeviceJ(String path, String password,
+                                                int networkType,
+                                                String deviceName,
+                                                long restoreHeight,
+                                                String subaddressLookahead);
+
+
     public native boolean closeJ(Wallet wallet);
 
     public boolean close(Wallet wallet) {
-        return closeJ(wallet);
+        unmanageWallet(wallet);
+        boolean closed = closeJ(wallet);
+        if (!closed) {
+            // in case we could not close it
+            // we manage it again
+            manageWallet(wallet);
+        }
+        return closed;
     }
 
     public boolean walletExists(File aFile) {
@@ -253,28 +337,4 @@ public class WalletManager {
     static public native void logError(String category, String message);
 
     static public native String moneroVersion();
-
-    static private native String generateKey(String seed, String seed_offset, boolean private_key, boolean spend_key);
-
-    static private native String generateAddress(String seed, String seed_offset, int account_index, int address_index, boolean testnet);
-
-    static public String getPrivateSpendKey(String mnemonic, String passphrase) {
-        return generateKey(mnemonic, passphrase, true, true);
-    }
-
-    static public String getAddress(String mnemonic, String passphrase, int accountIndex, int addressIndex) {
-        return generateAddress(mnemonic, passphrase, accountIndex, addressIndex, false);
-    }
-
-    static public String getPublicSpendKey(String mnemonic, String passphrase) {
-        return generateKey(mnemonic, passphrase, false, true);
-    }
-
-    static public String getPrivateViewKey(String mnemonic, String passphrase) {
-        return generateKey(mnemonic, passphrase, true, false);
-    }
-
-    static public String getPublicViewKey(String mnemonic, String passphrase) {
-        return generateKey(mnemonic, passphrase, false, false);
-    }
 }

@@ -15,12 +15,13 @@ import androidx.navigation.NavHostController
 
 @Composable
 fun BalanceScreen(viewModel: MainViewModel, uiState: MainUiState, navController: NavHostController) {
+    val address = viewModel.address
 
     SelectionContainer {
         Column {
-            Text(text = "Address: ${uiState.address}")
+            Text(text = "Address: $address")
             Text(text = "Balance: ${uiState.totalBalance}")
-            Text(text = "Sync State: ${uiState.syncState.description}")
+            Text(text = "Sync State: ${uiState.syncState}")
 
             Spacer(modifier = Modifier.height(20.dp))
 
@@ -31,17 +32,6 @@ fun BalanceScreen(viewModel: MainViewModel, uiState: MainUiState, navController:
                 Spacer(modifier = Modifier.weight(1f))
                 Button(onClick = viewModel::stop) {
                     Text(text = "Stop")
-                }
-                Spacer(modifier = Modifier.weight(1f))
-                Button(onClick = viewModel::saveState) {
-                    Text(text = "Save state")
-                }
-            }
-            Spacer(modifier = Modifier.height(20.dp))
-            Row(modifier = Modifier.fillMaxWidth()) {
-                Spacer(modifier = Modifier.weight(1f))
-                Button(onClick = viewModel::deleteWallet) {
-                    Text(text = "Delete wallet")
                 }
             }
         }

@@ -688,18 +688,6 @@ Java_io_horizontalsystems_monerokit_model_Wallet_getSecretSpendKey(JNIEnv *env, 
     return env->NewStringUTF(wallet->secretSpendKey().c_str());
 }
 
-JNIEXPORT jstring JNICALL
-Java_io_horizontalsystems_monerokit_model_Wallet_getPublicViewKey(JNIEnv *env, jobject instance) {
-    Monero::Wallet *wallet = getHandle<Monero::Wallet>(env, instance);
-    return env->NewStringUTF(wallet->publicViewKey().c_str());
-}
-
-JNIEXPORT jstring JNICALL
-Java_io_horizontalsystems_monerokit_model_Wallet_getPublicSpendKey(JNIEnv *env, jobject instance) {
-    Monero::Wallet *wallet = getHandle<Monero::Wallet>(env, instance);
-    return env->NewStringUTF(wallet->publicSpendKey().c_str());
-}
-
 JNIEXPORT jboolean JNICALL
 Java_io_horizontalsystems_monerokit_model_Wallet_store(JNIEnv *env, jobject instance,
                                              jstring path) {
@@ -762,19 +750,8 @@ Java_io_horizontalsystems_monerokit_model_Wallet_getConnectionStatusJ(JNIEnv *en
     Monero::Wallet *wallet = getHandle<Monero::Wallet>(env, instance);
     return wallet->connected();
 }
-
-JNIEXPORT void JNICALL
-Java_io_horizontalsystems_monerokit_model_Wallet_setTrustedDaemon(JNIEnv *env, jobject instance, jboolean isTrusted) {
-    Monero::Wallet *wallet = getHandle<Monero::Wallet>(env, instance);
-    LOGD("setTrustedDaemon %s", isTrusted ? "true" : "false");
-    wallet->setTrustedDaemon(isTrusted);
-}
-
-JNIEXPORT jboolean JNICALL
-Java_io_horizontalsystems_monerokit_model_Wallet_trustedDaemon(JNIEnv *env, jobject instance) {
-    Monero::Wallet *wallet = getHandle<Monero::Wallet>(env, instance);
-    return static_cast<jboolean>(wallet->trustedDaemon());
-}
+//TODO virtual void setTrustedDaemon(bool arg) = 0;
+//TODO virtual bool trustedDaemon() const = 0;
 
 JNIEXPORT jboolean JNICALL
 Java_io_horizontalsystems_monerokit_model_Wallet_setProxy(JNIEnv *env, jobject instance,
@@ -917,22 +894,6 @@ Java_io_horizontalsystems_monerokit_model_Wallet_isPaymentIdValid(JNIEnv *env, j
     bool isValid = Monero::Wallet::paymentIdValid(_payment_id);
     env->ReleaseStringUTFChars(payment_id, _payment_id);
     return static_cast<jboolean>(isValid);
-}
-
-JNIEXPORT jstring JNICALL
-Java_io_horizontalsystems_monerokit_model_Wallet_isKeyValid(JNIEnv *env, jclass clazz, jstring secret_key, jstring address, jboolean is_view_key, jint networkType) {
-    const char *_secret_key = env->GetStringUTFChars(secret_key, nullptr);
-    const char *_address = env->GetStringUTFChars(address, nullptr);
-    Monero::NetworkType _networkType = static_cast<Monero::NetworkType>(networkType);
-    std::string errorString;
-    bool isValid = Monero::Wallet::keyValid(_secret_key, _address, is_view_key, _networkType, errorString);
-    env->ReleaseStringUTFChars(secret_key, _secret_key);
-    env->ReleaseStringUTFChars(address, _address);
-    if (!isValid) {
-        LOGE("isKeyValid() %s", errorString.c_str());
-        return env->NewStringUTF(errorString.c_str());
-    }
-    return nullptr;
 }
 
 JNIEXPORT jboolean JNICALL
@@ -1632,32 +1593,6 @@ Java_io_horizontalsystems_monerokit_model_WalletManager_setLogLevel(JNIEnv *env,
 JNIEXPORT jstring JNICALL
 Java_io_horizontalsystems_monerokit_model_WalletManager_moneroVersion(JNIEnv *env, jclass clazz) {
     return env->NewStringUTF(MONERO_VERSION);
-}
-
-JNIEXPORT jstring JNICALL
-Java_io_horizontalsystems_monerokit_model_WalletManager_generateKey(JNIEnv *env, jclass clazz, jstring seed, jstring seed_offset, jboolean private_key, jboolean spend_key) {
-    const char *_seed = env->GetStringUTFChars(seed, nullptr);
-    const char *_seed_offset = env->GetStringUTFChars(seed_offset, nullptr);
-
-    std::string key = Monero::Wallet::generateKey(_seed, _seed_offset, private_key, spend_key);
-
-    env->ReleaseStringUTFChars(seed, _seed);
-    env->ReleaseStringUTFChars(seed_offset, _seed_offset);
-
-    return env->NewStringUTF(key.c_str());
-}
-
-JNIEXPORT jstring JNICALL
-Java_io_horizontalsystems_monerokit_model_WalletManager_generateAddress(JNIEnv *env, jclass clazz, jstring seed, jstring seed_offset, jint account_index, jint address_index,  jboolean testnet) {
-    const char *_seed = env->GetStringUTFChars(seed, nullptr);
-    const char *_seed_offset = env->GetStringUTFChars(seed_offset, nullptr);
-
-    std::string key = Monero::Wallet::generateAddress(_seed, _seed_offset, account_index, address_index, testnet);
-
-    env->ReleaseStringUTFChars(seed, _seed);
-    env->ReleaseStringUTFChars(seed_offset, _seed_offset);
-
-    return env->NewStringUTF(key.c_str());
 }
 
 //
